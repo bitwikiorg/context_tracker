@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320" role="img" aria-labelledby="title desc">
+<title id="title">Context Tracker</title><desc id="desc">Working context for AI agents. One note per branch, with Git history.</desc>
+<defs><linearGradient id="accent"><stop stop-color="#70e1db"/><stop offset=".5" stop-color="#a5a0ff"/><stop offset="1" stop-color="#f3b984"/></linearGradient></defs>
+<rect width="960" height="320" rx="20" fill="#10151f"/><rect x="32" y="32" width="896" height="256" rx="12" fill="none" stroke="#30394c"/>
+<path d="M60 64H900" stroke="url(#accent)" stroke-width="3"/>
+<g font-family="Arial, sans-serif"><text x="60" y="113" fill="#9aa9bf" font-size="14" letter-spacing="3">BITWIKI / AGENT TOOLS</text>
+<text x="57" y="175" fill="#f5f7fc" font-size="52" font-weight="700">Context Tracker</text>
+<text x="60" y="215" fill="#c1ccdc" font-size="21">Keep the thread. Revisit what matters.</text>
+<text x="60" y="257" fill="#8fded7" font-size="14">MCP · STDIO · GIT HISTORY</text></g>
+<g fill="none" stroke-width="3"><path d="M744 113V241M744 147C744 184 836 151 836 201V241" stroke="#7bd8d4"/><path d="M744 113H836" stroke="#8794b2" stroke-dasharray="5 7"/></g>
+<g stroke="#10151f" stroke-width="5"><circle cx="744" cy="113" r="10" fill="#dce7ff"/><circle cx="744" cy="181" r="10" fill="#7bd8d4"/><circle cx="744" cy="241" r="10" fill="#7bd8d4"/><circle cx="836" cy="201" r="10" fill="#b3a9ff"/><circle cx="836" cy="241" r="10" fill="#b3a9ff"/></g></svg>
