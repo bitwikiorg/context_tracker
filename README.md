@@ -62,7 +62,7 @@ The content is free text. A compact to-do list, an unresolved question, or a rem
 
 ## Quick start
 
-You’ll need Python 3.10 or newer, Git 2.28 or newer, and an MCP client that supports stdio.
+You’ll need Python 3.10 or newer, Git 2.28 or newer, a Unix host (Linux or macOS), and an MCP client that supports stdio.
 
 ```sh
 git clone https://github.com/bitwikiorg/context_tracker.git
@@ -71,7 +71,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Configure your MCP client to launch `server.py` over stdio. For clients that use an `mcpServers` configuration, replace `/absolute/path/to/context_tracker` with the path to your clone.
+Configure your MCP client to launch `server.py` over stdio. The example below is for a launcher dedicated to one conversation. Replace the paths and set `CONTEXT_TRACKER_LOCAL_SCOPE` to an opaque key unique to that conversation and its owner. Use the same key when reopening that conversation.
 
 ```json
 {
@@ -80,14 +80,17 @@ Configure your MCP client to launch `server.py` over stdio. For clients that use
       "command": "/absolute/path/to/context_tracker/.venv/bin/python",
       "args": ["/absolute/path/to/context_tracker/server.py"],
       "env": {
-        "CONTEXT_TRACKER_HOME": "/absolute/path/to/context-tracker-state"
+        "CONTEXT_TRACKER_HOME": "/absolute/path/to/context-tracker-state",
+        "CONTEXT_TRACKER_LOCAL_SCOPE": "example-private-launcher-scope"
       }
     }
   }
 }
 ```
 
-Choose a fresh directory for `CONTEXT_TRACKER_HOME` and call `context_read`. The response is JSON text with `status: EMPTY`, branch `main`, and blank title and content.
+Call `context_read` with a fresh conversation binding. The response is JSON text with `status: EMPTY`, branch `main`, and blank title and content.
+
+For a shared ChatGPT tunnel, leave `CONTEXT_TRACKER_LOCAL_SCOPE` unset. The server requires the host-provided `openai/subject` and `openai/session` tool-call metadata. Verify both reach the server before switching a live connection. Treat the tunnel as a trusted ingress. For other hosts, a private stdio launcher can bind one process per conversation. A shared process requires an integration that supplies a trusted binding per call.
 
 
 <p align="right"><a href="#context-tracker">↑ Back to top</a></p>
@@ -96,7 +99,7 @@ Choose a fresh directory for `CONTEXT_TRACKER_HOME` and call `context_read`. The
 
 ## Session workflow
 
-1. **Start a conversation.** Use `context_write` to set its working note. If you’re resuming the same conversation, read the existing note first.
+1. **Start a conversation.** Call `context_read`. A new conversation starts empty. Use `context_write` when you have working context worth keeping.
 2. **Revisit it when it matters.** Call `context_read` when an earlier question, constraint, or task becomes relevant. Treat the note as context for the current request.
 3. **Edit or replace the note.** Call `context_write` again with the full title and content you want to keep. To edit just one field, pass the other field unchanged. When the current context is resolved, write the next context into the same note. Git records the previous revision.
 
@@ -112,7 +115,7 @@ For example, call `context_write` with these arguments.
 Call `context_read` to retrieve the note. Its status is now `ACTIVE`.
 
 > [!IMPORTANT]
-> The agent or host decides when to call the tools. Starting a conversation leaves the stored note in place. Initialize the note for each new conversation, or give each conversation its own state directory when your client can set one.
+> Every tool requires a conversation binding before opening state. The host supplies that binding. Never set a static launcher scope on a server that serves several chats.
 
 
 <p align="right"><a href="#context-tracker">↑ Back to top</a></p>
@@ -166,10 +169,14 @@ A successful changed write returns `changed: true`, a short commit identifier, a
 | Custom location | Set `CONTEXT_TRACKER_HOME` in the server environment |
 | Tracked note | `notes/current.json` |
 | Initial branch | `main` |
-| History | Git commits retain earlier revisions |
-| Concurrent conversations | Use separate state directories for independent notes and branch selection |
+| Conversation storage | Each scope has its own Git repository under `conversations-v1` |
+| Idle retention | 24 hours by default, configurable with `CONTEXT_TRACKER_IDLE_SECONDS`. Cleanup runs on the next scoped call. |
+| Bounds | 128 retained conversations per root and 16 branches per conversation |
+| History | At 256 reachable commits, the next changed write checkpoints branch tips and prunes prior history. |
 
-The server initializes the Git repository on first use. All processes using the same directory share its current note and checked-out branch. Session initialization and tool invocation are responsibilities of the agent or host.
+The server initializes each repository on first use. A filesystem lock coordinates calls and expiry across server processes. When storage is full, a new conversation can open after an inactive scope expires.
+
+For rollout, use a separate state root and test two real conversations through the same host. The legacy shared repository is outside the new scopes. To roll back, disable the staged endpoint or redeploy a verified isolated build. Keep the old shared checkout offline.
 
 <p align="right"><a href="#context-tracker">↑ Back to top</a></p>
 
@@ -180,7 +187,7 @@ The server initializes the Git repository on first use. All processes using the 
 <details>
 <summary><strong>Does the note survive a server restart?</strong></summary>
 
-Yes. Git and the note remain on disk. The intended workflow establishes the appropriate context for each conversation. The host or agent controls when that happens.
+Yes, while the conversation is retained. Reopening it with the same trusted binding retrieves its note and selected branch.
 
 </details>
 
@@ -193,7 +200,7 @@ Call `context_write` with an empty title and empty content.
 {"title": "", "content": ""}
 ```
 
-The current state becomes `EMPTY`. Previous revisions remain in Git history.
+The current state becomes `EMPTY`. Previous revisions remain available until a history checkpoint or idle expiry.
 
 </details>
 
@@ -214,6 +221,7 @@ The current state becomes `EMPTY`. Previous revisions remain in Git history.
 | :--- | :--- |
 | [server.py](server.py) | MCP tools, note validation, and Git operations |
 | [requirements.txt](requirements.txt) | Pinned MCP dependency |
+| [tests/test_isolation.py](tests/test_isolation.py) | Stdio integration tests with temporary Git storage |
 | [assets/hero-banner.svg](assets/hero-banner.svg) | Project banner |
 | [assets/branches.svg](assets/branches.svg) | Note branching diagram |
 
