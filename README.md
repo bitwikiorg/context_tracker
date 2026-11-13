@@ -98,7 +98,7 @@ Choose a fresh directory for `CONTEXT_TRACKER_HOME` and call `context_read`. The
 
 1. **Start a conversation.** Use `context_write` to set its working note. If you’re resuming the same conversation, read the existing note first.
 2. **Revisit it when it matters.** Call `context_read` when an earlier question, constraint, or task becomes relevant. Treat the note as context for the current request.
-3. **Keep it current.** Replace the note as priorities change. Carry forward open items that still matter and drop resolved ones.
+3. **Edit or replace the note.** Call `context_write` again with the full title and content you want to keep. To edit just one field, pass the other field unchanged. When the current context is resolved, write the next context into the same note. Git records the previous revision.
 
 For example, call `context_write` with these arguments.
 
