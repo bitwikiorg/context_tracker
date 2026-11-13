@@ -1,0 +1,89 @@
+--- a/helpers/mcp_handler.py
++++ b/helpers/mcp_handler.py
+@@ -447,7 +447,7 @@
+         additional: dict[str, Any] | None = None
+         try:
+             response: CallToolResult = await MCPConfig.get_for_agent(self.agent).call_tool(
+-                self.name, kwargs
++                self.name, kwargs, conversation_id=self._context_id()
+             )
+             message, additional = self._format_tool_result(response)
+             if response.isError:
+@@ -644,6 +644,7 @@
+     disabled: bool = Field(default=False)
+     disabled_tools: list[str] = Field(default_factory=list)
+     scope: str = Field(default="global")
++    send_session_meta: bool = False
+ 
+     __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
+     __client: Optional["MCPClientLocal"] = PrivateAttr(default=None)
+@@ -686,7 +687,7 @@
+             return self.__client.has_tool(tool_name)  # type: ignore
+ 
+     async def call_tool(
+-        self, tool_name: str, input_data: Dict[str, Any]
++        self, tool_name: str, input_data: Dict[str, Any], *, meta: dict[str, Any] | None = None
+     ) -> CallToolResult:
+         """Call a tool with the given input data"""
+         client = self.__client
+@@ -694,6 +695,8 @@
+             raise RuntimeError("MCP local client is not initialized")
+         if tool_name in self.disabled_tools:
+             raise ValueError(f"Tool {tool_name} is disabled for server {self.name}.")
++        if meta is not None:
++            return await client.call_tool(tool_name, input_data, meta=meta)
+         return await client.call_tool(tool_name, input_data)
+ 
+     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
+@@ -722,6 +725,7 @@
+                     "disabled",
+                     "disabled_tools",
+                     "scope",
++                    "send_session_meta",
+                 ]:
+                     if key in ["command", "args"]:
+                         continue
+@@ -1258,7 +1262,7 @@
+         return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
+ 
+     async def call_tool(
+-        self, tool_name: str, input_data: Dict[str, Any]
++        self, tool_name: str, input_data: Dict[str, Any], *, conversation_id: str = ""
+     ) -> CallToolResult:
+         """Call a tool with the given input data"""
+         server_name_part, tool_name_part = _split_qualified_tool_name(tool_name)
+@@ -1270,6 +1274,17 @@
+                     break
+         if matched_server is None:
+             raise ValueError(f"Tool {tool_name} not found")
++        if isinstance(matched_server, MCPServerLocal) and matched_server.send_session_meta:
++            if not conversation_id:
++                raise ValueError("Missing Agent Zero conversation ID")
++            return await matched_server.call_tool(
++                tool_name_part, input_data,
++                meta={"context-tracker/conversation": {
++                    "host": "agent-zero",
++                    "scope": self.config_scope,
++                    "id": conversation_id,
++                }},
++            )
+         return await matched_server.call_tool(tool_name_part, input_data)
+ 
+ 
+@@ -1471,7 +1486,7 @@
+             return [dict(tool) for tool in self.tools]
+ 
+     async def call_tool(
+-        self, tool_name: str, input_data: Dict[str, Any]
++        self, tool_name: str, input_data: Dict[str, Any], *, meta: dict[str, Any] | None = None
+     ) -> CallToolResult:
+         # PrintStyle(font_color="cyan").print(f"MCPClientBase ({self.server.name}): Preparing for 'call_tool' operation for tool '{tool_name}'.")
+         if not self.has_tool(tool_name):
+@@ -1503,6 +1518,7 @@
+                 tool_name,
+                 input_data,
+                 read_timeout_seconds=timedelta(seconds=tool_timeout),
++                **({"meta": meta} if meta is not None else {}),
+             )
+             # PrintStyle(font_color="green").print(f"MCPClientBase ({self.server.name}): Tool '{tool_name}' call successful via session.")
+             return response

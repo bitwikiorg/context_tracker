@@ -33,7 +33,20 @@ mcp = FastMCP(
 def conversation_key(ctx: Context) -> str:
     # This variable is set by a launcher dedicated to one conversation.
     local = os.environ.get("CONTEXT_TRACKER_LOCAL_SCOPE", "").strip()
-    if local:
+    trusted_host = os.environ.get("CONTEXT_TRACKER_TRUSTED_HOST", "").strip()
+    if trusted_host and local:
+        raise ValueError("Configure either a trusted host or a private launcher scope")
+    if trusted_host:
+        meta = ctx.request_context.meta
+        fields = meta.model_extra if meta else {}
+        scope = fields.get("context-tracker/conversation")
+        if not isinstance(scope, dict) or scope.get("host") != trusted_host:
+            raise ValueError("Missing trusted conversation binding. Configure the MCP host.")
+        tenant, conversation = scope.get("scope"), scope.get("id")
+        if not all(isinstance(value, str) and value.strip() for value in (tenant, conversation)):
+            raise ValueError("Invalid host conversation binding")
+        binding = ["host", trusted_host, tenant, conversation]
+    elif local:
         binding = ["launcher", local]
     else:
         meta = ctx.request_context.meta

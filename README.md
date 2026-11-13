@@ -90,6 +90,8 @@ Configure your MCP client to launch `server.py` over stdio. The example below is
 
 Call `context_read` with a fresh conversation binding. The response is JSON text with `status: EMPTY`, branch `main`, and blank title and content.
 
+For an Agent Zero project, follow the [Agent Zero setup and rollback guide](integrations/agent-zero/README.md). It binds notes to each chat automatically after the host patch is installed.
+
 For a shared ChatGPT tunnel, leave `CONTEXT_TRACKER_LOCAL_SCOPE` unset. The server requires the host-provided `openai/subject` and `openai/session` tool-call metadata. Verify both reach the server before switching a live connection. Treat the tunnel as a trusted ingress. For other hosts, a private stdio launcher can bind one process per conversation. A shared process requires an integration that supplies a trusted binding per call.
 
 
