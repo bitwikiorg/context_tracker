@@ -149,7 +149,7 @@ def context_read(ctx: Context) -> str:
     with checkout(ctx) as repo:
         result = state(repo)
         if result["status"] == "EMPTY":
-            result["hint"] = "No working context recorded. Use context_write when relevant."
+            result["hint"] = "No working context yet for this conversation. Use context_write to start tracking relevant context."
         return json.dumps(result, ensure_ascii=False)
 
 
