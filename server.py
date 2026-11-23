@@ -147,7 +147,10 @@ def branch_names(repo: Path) -> list[str]:
 def context_read(ctx: Context) -> str:
     """Read this conversation's current note as JSON text."""
     with checkout(ctx) as repo:
-        return json.dumps(state(repo), ensure_ascii=False)
+        result = state(repo)
+        if result["status"] == "EMPTY":
+            result["hint"] = "No working context recorded. Use context_write when relevant."
+        return json.dumps(result, ensure_ascii=False)
 
 
 @mcp.tool()
