@@ -59,9 +59,13 @@ class IsolationTests(unittest.IsolatedAsyncioTestCase):
                 call(first, "context_read", A), call(second, "context_read", B)
             )
             self.assertEqual((empty_a["status"], empty_b["status"]), ("EMPTY", "EMPTY"))
+            hint = "No working context recorded. Use context_write when relevant."
+            self.assertEqual(empty_a["hint"], hint)
+            self.assertEqual(empty_b["hint"], hint)
             await call(first, "context_write", A, title="Earlier task", content="alpha")
             edited = await call(first, "context_write", A, title="Next task", content="café")
             self.assertTrue(edited["changed"])
+            self.assertNotIn("hint", await call(first, "context_read", A))
             same = await call(first, "context_write", A, title="Next task", content="café")
             self.assertFalse(same["changed"])
             self.assertEqual((await call(first, "context_read", OTHER_USER))["status"], "EMPTY")
